@@ -99,7 +99,11 @@ int main(int argc, char *argv[]) {
 		if (statvfs(m->mnt_dir, &vfs) < 0) { fprintf(stderr, "statvfs: %s: %s\n", m->mnt_dir, strerror(errno)); } else if (vfs.f_blocks > 0) {
 			if (script_flag) {
 				printf("%idir=%s\n", idx, m->mnt_dir);
-				printf("%idisk=%s\n", idx, m->mnt_fsname);
+				printf("%ifsname=%s\n", idx, m->mnt_fsname);
+				printf("%itype=%s\n", idx, m->mnt_type);
+				printf("%iopts=%i\n", idx, m->mnt_opts);
+				printf("%ifreq=%i\n", idx, m->mnt_freq);
+				printf("%ipassno=%s\n", idx, m->mnt_passno);
 				printf("%iinode=%li\n", idx, vfs.f_files);
 				printf("%iinodefree=%li\n", idx, vfs.f_ffree);
 				printf("%iinodeavail=%li\n", idx, vfs.f_favail);
@@ -128,6 +132,7 @@ int main(int argc, char *argv[]) {
 				}
 				if (color_flag) {
 					printf(RESET COLOR"%s"RESET" mounted at "COLOR"%s"RESET"\n", m->mnt_fsname, m->mnt_dir);
+					printf(RESET"type: "COLOR"%s"RESET", opts: "COLOR"%s"RESET"\n", m->mnt_type, m->mnt_opts);
 					if (block_is)
 						printf(RESET"block usage: "COLOR"%s"RESET"/"COLOR"%s"RESET" ("COLOR PERCENTAGE_FORMAT"%%"RESET")\n", block_used, block, block_percentage);
 					if (inode_is)
@@ -135,6 +140,7 @@ int main(int argc, char *argv[]) {
 					printf("\n");
 				} else {
 					printf("%s mounted at %s\n", m->mnt_fsname, m->mnt_dir);
+					printf("type: %s, opts: %s\n", m->mnt_type, m->mnt_opts);
 					if (block_is)
 						printf("block usage: %s/%s ("PERCENTAGE_FORMAT"%%)\n", block_used, block, block_percentage);
 					if (inode_is)
