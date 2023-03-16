@@ -89,12 +89,16 @@ int main(int argc, char *argv[]) {
 			if (m->mnt_fsname[0] != '/') continue;
 			if (m->mnt_dir[0]    != '/') continue;
 		}
+		bool skip = true;
 		for (int i = 0; i < fsc; ++i) {
+			if (fs[i] == NULL) continue;
 			if (strcmp(m->mnt_fsname, fs[i]) != 0)
 			if (strcmp(m->mnt_dir, fs[i]) != 0)
 				continue;
 			fs[i] = NULL;
+			skip = false;
 		}
+		if (skip) continue;
 		struct statvfs vfs;
 		if (statvfs(m->mnt_dir, &vfs) < 0) { fprintf(stderr, "statvfs: %s: %s\n", m->mnt_dir, strerror(errno)); } else if (vfs.f_blocks > 0) {
 			if (script_flag) {
