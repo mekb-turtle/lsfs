@@ -41,6 +41,9 @@ char *display_bytes(unsigned long bytes) {
 		free(temp_dec);
 	return str;
 }
+char *display_bytes_mul(unsigned long bytes, unsigned long multiplier) {
+	return display_bytes(bytes * multiplier);
+}
 void usage(char *argv0) {
 	fprintf(stderr, "\
 Usage: %s [-c] [-s] [-p] [-e] [filesystems...]\n"
@@ -93,8 +96,8 @@ int main(int argc, char *argv[]) {
 			bool skip = true;
 			for (int i = 0; i < fsc; ++i) {
 				if (fs[i] == NULL) continue;
-				if (strcmp(m->mnt_fsname, fs[i]) != 0)
-				if (strcmp(m->mnt_dir, fs[i]) != 0)
+				if (strcmp(m->mnt_fsname, fs[i]) != 0
+						&& strcmp(m->mnt_dir, fs[i]) != 0)
 					continue;
 				fs[i] = NULL;
 				skip = false;
@@ -107,50 +110,59 @@ int main(int argc, char *argv[]) {
 				printf("%idir=%s\n", idx, m->mnt_dir);
 				printf("%ifsname=%s\n", idx, m->mnt_fsname);
 				printf("%itype=%s\n", idx, m->mnt_type);
-				printf("%iopts=%i\n", idx, m->mnt_opts);
+				printf("%iopts=%s\n", idx, m->mnt_opts);
 				printf("%ifreq=%i\n", idx, m->mnt_freq);
-				printf("%ipassno=%s\n", idx, m->mnt_passno);
-				printf("%iinode=%li\n", idx, vfs.f_files);
-				printf("%iinodefree=%li\n", idx, vfs.f_ffree);
-				printf("%iinodeavail=%li\n", idx, vfs.f_favail);
-				printf("%iinodeused=%li\n", idx, vfs.f_files - vfs.f_ffree);
+				printf("%ipassno=%i\n", idx, m->mnt_passno);
+				printf("%ifiles=%li\n", idx, vfs.f_files);
+				printf("%ifilesfree=%li\n", idx, vfs.f_ffree);
+				printf("%ifilesavail=%li\n", idx, vfs.f_favail);
+				printf("%ifilesused=%li\n", idx, vfs.f_files - vfs.f_ffree);
+				printf("%iblocksize=%li\n", idx, vfs.f_bsize);
 				printf("%iblock=%li\n", idx, vfs.f_blocks);
 				printf("%iblockfree=%li\n", idx, vfs.f_bfree);
 				printf("%iblockavail=%li\n", idx, vfs.f_bavail);
 				printf("%iblockused=%li\n", idx, vfs.f_blocks - vfs.f_bfree);
 				++idx;
 			} else {
-				char *block_used = display_bytes((vfs.f_blocks-vfs.f_bfree)*vfs.f_bsize);
-				char *block = display_bytes(vfs.f_blocks*vfs.f_bsize);
+				char *block = display_bytes_mul(vfs.f_blocks, vfs.f_bsize);
+				char *block_free = display_bytes_mul(vfs.f_bfree, vfs.f_bsize);
+				char *block_avail = display_bytes_mul(vfs.f_bavail, vfs.f_bsize);
+				char *block_used = display_bytes_mul(vfs.f_blocks - vfs.f_bfree, vfs.f_bsize);
 				bool block_is = false;
 				double block_percentage;
 				if (vfs.f_blocks > 0) {
 					block_percentage = 100.0-(((double)vfs.f_bfree*100.0)/(double)vfs.f_blocks);
 					block_is = true;
 				}
-				char *inode_used = display_bytes(vfs.f_files-vfs.f_ffree);
-				char *inode = display_bytes(vfs.f_files);
-				bool inode_is = false;
-				double inode_percentage;
+				char *files = display_bytes(vfs.f_files);
+				char *files_free = display_bytes(vfs.f_ffree);
+				char *files_avail = display_bytes(vfs.f_favail);
+				char *files_used = display_bytes(vfs.f_files - vfs.f_ffree);
+				bool files_is = false;
+				double files_percentage;
 				if (vfs.f_files > 0) {
-					inode_percentage = 100.0-(((double)vfs.f_ffree*100.0)/(double)vfs.f_files);
-					inode_is = true;
+					files_percentage = 100.0-(((double)vfs.f_ffree*100.0)/(double)vfs.f_files);
+					files_is = true;
 				}
 				if (color_flag) {
 					printf(RESET COLOR"%s"RESET" mounted at "COLOR"%s"RESET"\n", m->mnt_fsname, m->mnt_dir);
 					printf(RESET"type: "COLOR"%s"RESET", opts: "COLOR"%s"RESET"\n", m->mnt_type, m->mnt_opts);
 					if (block_is)
-						printf(RESET"block usage: "COLOR"%s"RESET"/"COLOR"%s"RESET" ("COLOR PERCENTAGE_FORMAT"%%"RESET")\n", block_used, block, block_percentage);
-					if (inode_is)
-						printf(RESET"inode usage: "COLOR"%s"RESET"/"COLOR"%s"RESET" ("COLOR PERCENTAGE_FORMAT"%%"RESET")\n", inode_used, inode, inode_percentage);
+						printf(RESET"block usage: "COLOR"%s"RESET"/"COLOR"%s"RESET" ("COLOR PERCENTAGE_FORMAT"%%"RESET", "COLOR"%s"RESET" free, "COLOR"%s"RESET" available)\n",
+							block_used, block, block_percentage, block_free, block_avail);
+					if (files_is)
+						printf(RESET"files usage: "COLOR"%s"RESET"/"COLOR"%s"RESET" ("COLOR PERCENTAGE_FORMAT"%%"RESET", "COLOR"%s"RESET" free, "COLOR"%s"RESET" available)\n",
+							files_used, files, files_percentage, files_free, files_avail);
 					printf("\n");
 				} else {
 					printf("%s mounted at %s\n", m->mnt_fsname, m->mnt_dir);
 					printf("type: %s, opts: %s\n", m->mnt_type, m->mnt_opts);
 					if (block_is)
-						printf("block usage: %s/%s ("PERCENTAGE_FORMAT"%%)\n", block_used, block, block_percentage);
-					if (inode_is)
-						printf("inode usage: %s/%s ("PERCENTAGE_FORMAT"%%)\n", inode_used, inode, inode_percentage);
+						printf("block usage: %s/%s ("PERCENTAGE_FORMAT"%%, %s free, %s available)\n",
+							block_used, block, block_percentage, block_free, block_avail);
+					if (files_is)
+						printf("files usage: %s/%s ("PERCENTAGE_FORMAT"%%, %s free, %s available)\n",
+							files_used, files, files_percentage, files_free, files_avail);
 					printf("\n");
 				}
 			}
