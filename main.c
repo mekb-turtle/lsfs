@@ -50,6 +50,7 @@ Usage: %s [-c] [-s] [-p] [-e] [filesystems...]\n"
 "	-c --color --colour : adds color to the output\n"
 "	-s --script : outputs in a way parseable by scripts\n"
 "	-p --psuedofs : outputs psuedo filesystems too\n"
+"	-q --quiet : only show mount and block usage on 1 line\n"
 "	filesystems can either be the mount directory (e.g /), or the disk file (e.g /dev/sda1)\n"
 "	omit filesystems to list all filesystems\n",
 	argv0);
@@ -59,6 +60,7 @@ int main(int argc, char *argv[]) {
 	bool color_flag = 0;
 	bool script_flag = 0;
 	bool psuedofs_flag = 0;
+	bool quiet_flag = 0;
 	bool flag_done = 0;
 	char* fs[argc];
 	int fsc = 0;
@@ -71,8 +73,12 @@ int main(int argc, char *argv[]) {
 					color_flag = 1;
 				} else
 				if (strcmp(argv[i], "-s") == 0 || strcmp(argv[i], "--script") == 0) {
-					if (script_flag || color_flag) INVALID;
+					if (script_flag || color_flag || quiet_flag) INVALID;
 					script_flag = 1;
+				} else
+				if (strcmp(argv[i], "-q") == 0 || strcmp(argv[i], "--quiet") == 0) {
+					if (script_flag || quiet_flag) INVALID;
+					quiet_flag = 1;
 				} else
 				if (strcmp(argv[i], "-p") == 0 || strcmp(argv[i], "--psuedofs") == 0) {
 					if (psuedofs_flag) INVALID;
@@ -144,26 +150,42 @@ int main(int argc, char *argv[]) {
 					files_percentage = 100.0-(((double)vfs.f_ffree*100.0)/(double)vfs.f_files);
 					files_is = true;
 				}
-				if (color_flag) {
-					printf(RESET COLOR"%s"RESET" mounted at "COLOR"%s"RESET"\n", m->mnt_fsname, m->mnt_dir);
-					printf(RESET"type: "COLOR"%s"RESET", opts: "COLOR"%s"RESET"\n", m->mnt_type, m->mnt_opts);
-					if (block_is)
-						printf(RESET"block usage: "COLOR"%s"RESET"/"COLOR"%s"RESET" ("COLOR PERCENTAGE_FORMAT"%%"RESET", "COLOR"%s"RESET" free, "COLOR"%s"RESET" available)\n",
-							block_used, block, block_percentage, block_free, block_avail);
-					if (files_is)
-						printf(RESET"files usage: "COLOR"%s"RESET"/"COLOR"%s"RESET" ("COLOR PERCENTAGE_FORMAT"%%"RESET", "COLOR"%s"RESET" free, "COLOR"%s"RESET" available)\n",
-							files_used, files, files_percentage, files_free, files_avail);
-					printf("\n");
+				if (quiet_flag) {
+					if (color_flag) {
+						printf(RESET COLOR"%s"RESET" mounted at "COLOR"%s"RESET, m->mnt_fsname, m->mnt_dir);
+						if (block_is)
+							printf(RESET", "COLOR"%s"RESET"/"COLOR"%s"RESET" ("COLOR PERCENTAGE_FORMAT"%%"RESET", "COLOR"%s"RESET" free, "COLOR"%s"RESET" available)",
+								block_used, block, block_percentage, block_free, block_avail);
+						printf("\n");
+					} else {
+						printf("%s mounted at %s", m->mnt_fsname, m->mnt_dir);
+						if (block_is)
+							printf(", %s/%s ("PERCENTAGE_FORMAT"%%, %s free, %s available)",
+								block_used, block, block_percentage, block_free, block_avail);
+						printf("\n");
+					}
 				} else {
-					printf("%s mounted at %s\n", m->mnt_fsname, m->mnt_dir);
-					printf("type: %s, opts: %s\n", m->mnt_type, m->mnt_opts);
-					if (block_is)
-						printf("block usage: %s/%s ("PERCENTAGE_FORMAT"%%, %s free, %s available)\n",
-							block_used, block, block_percentage, block_free, block_avail);
-					if (files_is)
-						printf("files usage: %s/%s ("PERCENTAGE_FORMAT"%%, %s free, %s available)\n",
-							files_used, files, files_percentage, files_free, files_avail);
-					printf("\n");
+					if (color_flag) {
+						printf(RESET COLOR"%s"RESET" mounted at "COLOR"%s"RESET"\n", m->mnt_fsname, m->mnt_dir);
+						printf(RESET"type: "COLOR"%s"RESET", opts: "COLOR"%s"RESET"\n", m->mnt_type, m->mnt_opts);
+						if (block_is)
+							printf(RESET"block usage: "COLOR"%s"RESET"/"COLOR"%s"RESET" ("COLOR PERCENTAGE_FORMAT"%%"RESET", "COLOR"%s"RESET" free, "COLOR"%s"RESET" available)\n",
+								block_used, block, block_percentage, block_free, block_avail);
+						if (files_is)
+							printf(RESET"files usage: "COLOR"%s"RESET"/"COLOR"%s"RESET" ("COLOR PERCENTAGE_FORMAT"%%"RESET", "COLOR"%s"RESET" free, "COLOR"%s"RESET" available)\n",
+								files_used, files, files_percentage, files_free, files_avail);
+						printf("\n");
+					} else {
+						printf("%s mounted at %s\n", m->mnt_fsname, m->mnt_dir);
+						printf("type: %s, opts: %s\n", m->mnt_type, m->mnt_opts);
+						if (block_is)
+							printf("block usage: %s/%s ("PERCENTAGE_FORMAT"%%, %s free, %s available)\n",
+								block_used, block, block_percentage, block_free, block_avail);
+						if (files_is)
+							printf("files usage: %s/%s ("PERCENTAGE_FORMAT"%%, %s free, %s available)\n",
+								files_used, files, files_percentage, files_free, files_avail);
+						printf("\n");
+					}
 				}
 			}
 		}
