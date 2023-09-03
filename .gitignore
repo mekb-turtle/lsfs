@@ -1,4 +1,3 @@
-lsfs
-*.o
+build
 *.swp
 .idea

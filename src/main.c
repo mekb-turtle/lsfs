@@ -56,7 +56,7 @@ char *display_bytes_mul(unsigned long bytes, unsigned long multiplier) {
 
 void usage(char *argv0) {
 	fprintf(stderr, "\
-Usage: %s [-c] [-s] [-p] [-e] [filesystems...]\n"
+Usage: %s [-c] [-j] [-p] [-q] [filesystems...]\n"
 "	-c --color --colour : adds color to the output\n"
 "	-j --json : outputs in json\n"
 "	-p --psuedofs : outputs psuedo filesystems too\n"
