@@ -50,10 +50,6 @@ char *display_bytes(unsigned long bytes) {
 	return str;
 }
 
-char *display_bytes_mul(unsigned long bytes, unsigned long multiplier) {
-	return display_bytes(bytes * multiplier);
-}
-
 void usage(char *argv0) {
 	fprintf(stderr, "\
 Usage: %s [-c] [-j] [-p] [-q] [filesystems...]\n"
@@ -71,6 +67,22 @@ void escape_string(char *string) {
 	for (; *string; ++string) {
 		if (*string == '"' || *string == '\\') putchar('\\');
 		putchar(*string);
+	}
+}
+
+void print_usage(bool color, fsblkcnt_t total, fsblkcnt_t free, fsblkcnt_t avail, unsigned long block) {
+	fsblkcnt_t used = total - free;
+	double percent = (double)used / (double)total * 100.0;
+	char *s_used = display_bytes(used * block);
+	char *s_total = display_bytes(total * block);
+	char *s_free = display_bytes(free * block);
+	char *s_avail = display_bytes(avail * block);
+	if (color) {
+		printf("" RESET COLOR"%s"RESET" used ("COLOR PERCENTAGE_FORMAT"%%"RESET"), "COLOR"%s"RESET" total, "COLOR"%s"RESET" free, "COLOR"%s"RESET" available",
+			s_used, percent, s_total, s_free, s_avail);
+	} else {
+		printf("%s used ("PERCENTAGE_FORMAT"%%), %s total, %s free, %s available",
+			s_used, percent, s_total, s_free, s_avail);
 	}
 }
 
@@ -177,63 +189,34 @@ int main(int argc, char *argv[]) {
 
 				printf("}}");
 			} else {
-				char *block = display_bytes_mul(vfs.f_blocks, vfs.f_bsize);
-				char *block_free = display_bytes_mul(vfs.f_bfree, vfs.f_bsize);
-				char *block_avail = display_bytes_mul(vfs.f_bavail, vfs.f_bsize);
-				char *block_used = display_bytes_mul(vfs.f_blocks - vfs.f_bfree, vfs.f_bsize);
-				bool block_is = false;
-				double block_percentage;
-				if (vfs.f_blocks > 0) {
-					block_percentage = 100.0-(((double)vfs.f_bfree*100.0)/(double)vfs.f_blocks);
-					block_is = true;
-				}
-				char *files = display_bytes(vfs.f_files);
-				char *files_free = display_bytes(vfs.f_ffree);
-				char *files_avail = display_bytes(vfs.f_favail);
-				char *files_used = display_bytes(vfs.f_files - vfs.f_ffree);
-				bool files_is = false;
-				double files_percentage;
-				if (vfs.f_files > 0) {
-					files_percentage = 100.0-(((double)vfs.f_ffree*100.0)/(double)vfs.f_files);
-					files_is = true;
-				}
-
 				if (quiet_flag) {
 					if (color_flag) {
 						printf(RESET COLOR"%s"RESET" mounted at "COLOR"%s"RESET, m->mnt_fsname, m->mnt_dir);
-						if (block_is)
-							printf(RESET", "COLOR"%s"RESET"/"COLOR"%s"RESET" ("COLOR PERCENTAGE_FORMAT"%%"RESET", "COLOR"%s"RESET" free, "COLOR"%s"RESET" available)",
-								block_used, block, block_percentage, block_free, block_avail);
-						printf("\n");
 					} else {
 						printf("%s mounted at %s", m->mnt_fsname, m->mnt_dir);
-						if (block_is)
-							printf(", %s/%s ("PERCENTAGE_FORMAT"%%, %s free, %s available)",
-								block_used, block, block_percentage, block_free, block_avail);
-						printf("\n");
 					}
+					printf(RESET ", ");
+					if (vfs.f_blocks > 0) print_usage(color_flag, vfs.f_blocks, vfs.f_bfree, vfs.f_bavail, vfs.f_bsize);
+					printf("\n");
 				} else {
 					if (color_flag) {
 						printf(RESET COLOR"%s"RESET" mounted at "COLOR"%s"RESET"\n", m->mnt_fsname, m->mnt_dir);
 						printf(RESET"type: "COLOR"%s"RESET", opts: "COLOR"%s"RESET"\n", m->mnt_type, m->mnt_opts);
-						if (block_is)
-							printf(RESET"block usage: "COLOR"%s"RESET"/"COLOR"%s"RESET" ("COLOR PERCENTAGE_FORMAT"%%"RESET", "COLOR"%s"RESET" free, "COLOR"%s"RESET" available)\n",
-								block_used, block, block_percentage, block_free, block_avail);
-						if (files_is)
-							printf(RESET"files usage: "COLOR"%s"RESET"/"COLOR"%s"RESET" ("COLOR PERCENTAGE_FORMAT"%%"RESET", "COLOR"%s"RESET" free, "COLOR"%s"RESET" available)\n",
-								files_used, files, files_percentage, files_free, files_avail);
-						printf("\n");
 					} else {
 						printf("%s mounted at %s\n", m->mnt_fsname, m->mnt_dir);
 						printf("type: %s, opts: %s\n", m->mnt_type, m->mnt_opts);
-						if (block_is)
-							printf("block usage: %s/%s ("PERCENTAGE_FORMAT"%%, %s free, %s available)\n",
-								block_used, block, block_percentage, block_free, block_avail);
-						if (files_is)
-							printf("files usage: %s/%s ("PERCENTAGE_FORMAT"%%, %s free, %s available)\n",
-								files_used, files, files_percentage, files_free, files_avail);
+					}
+					if (vfs.f_blocks > 0) {
+						printf("block usage: ");
+						print_usage(color_flag, vfs.f_blocks, vfs.f_bfree, vfs.f_bavail, vfs.f_bsize);
 						printf("\n");
 					}
+					if (vfs.f_files > 0) {
+						printf("files usage: ");
+						print_usage(color_flag, vfs.f_files, vfs.f_ffree, vfs.f_favail, 1);
+						printf("\n");
+					}
+					printf("\n");
 				}
 			}
 		}
