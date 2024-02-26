@@ -22,6 +22,7 @@ static struct option options_getopt[] = {
         {"json",     no_argument, 0, 'j'},
         {"psuedofs", no_argument, 0, 'p'},
         {"quiet",    no_argument, 0, 'q'},
+        {"tab",      no_argument, 0, 't'},
         {0,          0,           0, 0  }
 };
 
@@ -69,7 +70,7 @@ void escape_string(char *string) {
 	}
 }
 
-void print_usage(bool color, fsblkcnt_t total, fsblkcnt_t free, fsblkcnt_t avail, unsigned long block) {
+void print_usage(bool color, char split_char, fsblkcnt_t total, fsblkcnt_t free, fsblkcnt_t avail, unsigned long block) {
 	fsblkcnt_t used = total - free;
 	double percent = (double) used / (double) total * 100.0;
 	char *s_used = display_bytes(used * block);
@@ -77,11 +78,11 @@ void print_usage(bool color, fsblkcnt_t total, fsblkcnt_t free, fsblkcnt_t avail
 	char *s_free = display_bytes(free * block);
 	char *s_avail = display_bytes(avail * block);
 	if (color) {
-		printf("" RESET COLOR "%s" RESET " used (" COLOR PERCENTAGE_FORMAT "%%" RESET "), " COLOR "%s" RESET " total, " COLOR "%s" RESET " free, " COLOR "%s" RESET " available",
-		       s_used, percent, s_total, s_free, s_avail);
+		printf("" RESET COLOR "%s" RESET " used%c(" COLOR PERCENTAGE_FORMAT "%%" RESET "),%c" COLOR "%s" RESET " total,%c" COLOR "%s" RESET " free,%c" COLOR "%s" RESET " available",
+		       s_used, split_char, percent, split_char, s_total, split_char, s_free, split_char, s_avail);
 	} else {
-		printf("%s used (" PERCENTAGE_FORMAT "%%), %s total, %s free, %s available",
-		       s_used, percent, s_total, s_free, s_avail);
+		printf("%s used%c(" PERCENTAGE_FORMAT "%%),%c%s total,%c%s free,%c%s available",
+		       s_used, split_char, percent, split_char, s_total, split_char, s_free, split_char, s_avail);
 	}
 }
 
@@ -93,9 +94,10 @@ int main(int argc, char *argv[]) {
 	bool json_flag = 0;
 	bool psuedofs_flag = 0;
 	bool quiet_flag = 0;
+	bool tab_flag = 0;
 
 	// argument handling
-	while ((opt = getopt_long(argc, argv, ":hVcjpq", options_getopt, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, ":hVcjpqt", options_getopt, NULL)) != -1) {
 		switch (opt) {
 			case 'h':
 				printf("Usage: %s [-c] [-j] [-p] [-q] [filesystems...]\n"
@@ -105,6 +107,7 @@ int main(int argc, char *argv[]) {
 				       "-j --json: outputs in json\n"
 				       "-p --psuedofs: outputs psuedo filesystems too\n"
 				       "-q --quiet: only show mount and block usage on 1 line\n"
+				       "-t --tab: split info by tab characters\n"
 				       "filesystems can either be the mount directory (e.g /), or the disk file (e.g /dev/sda1)\n"
 				       "omit filesystems to list all filesystems\n",
 				       TARGET);
@@ -121,7 +124,7 @@ int main(int argc, char *argv[]) {
 								color_flag = 1;
 							break;
 						case 'j':
-							if (json_flag || color_flag || quiet_flag) invalid = true;
+							if (json_flag || tab_flag || color_flag || quiet_flag) invalid = true;
 							else
 								json_flag = 1;
 							break;
@@ -134,6 +137,11 @@ int main(int argc, char *argv[]) {
 							if (psuedofs_flag) invalid = true;
 							else
 								psuedofs_flag = 1;
+							break;
+						case 't':
+							if (json_flag || tab_flag) invalid = true;
+							else
+								tab_flag = 1;
 							break;
 						default:
 							invalid = true;
@@ -225,31 +233,33 @@ int main(int argc, char *argv[]) {
 
 				printf("}}");
 			} else {
+				char split_char = ' ';
+				if (tab_flag) split_char = '\t';
 				if (quiet_flag) {
 					if (color_flag) {
-						printf(RESET COLOR "%s" RESET " mounted at " COLOR "%s" RESET, m->mnt_fsname, m->mnt_dir);
+						printf(RESET COLOR "%s" RESET "%cmounted at " COLOR "%s" RESET, m->mnt_fsname, split_char, m->mnt_dir);
 					} else {
-						printf("%s mounted at %s", m->mnt_fsname, m->mnt_dir);
+						printf("%s%cmounted at %s", m->mnt_fsname, split_char, m->mnt_dir);
 					}
-					printf(RESET ", ");
-					if (vfs.f_blocks > 0) print_usage(color_flag, vfs.f_blocks, vfs.f_bfree, vfs.f_bavail, vfs.f_bsize);
+					printf(",%c", split_char);
+					if (vfs.f_blocks > 0) print_usage(color_flag, split_char, vfs.f_blocks, vfs.f_bfree, vfs.f_bavail, vfs.f_bsize);
 					printf("\n");
 				} else {
 					if (color_flag) {
-						printf(RESET COLOR "%s" RESET " mounted at " COLOR "%s" RESET "\n", m->mnt_fsname, m->mnt_dir);
-						printf(RESET "type: " COLOR "%s" RESET ", opts: " COLOR "%s" RESET "\n", m->mnt_type, m->mnt_opts);
+						printf(RESET COLOR "%s" RESET "%cmounted at " COLOR "%s" RESET "\n", m->mnt_fsname, split_char, m->mnt_dir);
+						printf(RESET "type: " COLOR "%s" RESET ",%copts: " COLOR "%s" RESET "\n", m->mnt_type, split_char, m->mnt_opts);
 					} else {
-						printf("%s mounted at %s\n", m->mnt_fsname, m->mnt_dir);
-						printf("type: %s, opts: %s\n", m->mnt_type, m->mnt_opts);
+						printf("%s%cmounted at %s\n", m->mnt_fsname, split_char, m->mnt_dir);
+						printf("type: %s,%copts: %s\n", m->mnt_type, split_char, m->mnt_opts);
 					}
 					if (vfs.f_blocks > 0) {
-						printf("block usage: ");
-						print_usage(color_flag, vfs.f_blocks, vfs.f_bfree, vfs.f_bavail, vfs.f_bsize);
+						printf("block usage:%c", split_char);
+						print_usage(color_flag, split_char, vfs.f_blocks, vfs.f_bfree, vfs.f_bavail, vfs.f_bsize);
 						printf("\n");
 					}
 					if (vfs.f_files > 0) {
-						printf("files usage: ");
-						print_usage(color_flag, vfs.f_files, vfs.f_ffree, vfs.f_favail, 1);
+						printf("files usage:%c", split_char);
+						print_usage(color_flag, split_char, vfs.f_files, vfs.f_ffree, vfs.f_favail, 1);
 						printf("\n");
 					}
 					printf("\n");

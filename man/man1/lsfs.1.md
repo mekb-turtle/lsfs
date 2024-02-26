@@ -32,3 +32,10 @@ Omit the filesystems parameter to list all mounted filesystems.
 -q, \--quiet
 : only show mount and block usage on 1 line
 
+-t, \--tab
+: split info by tab characters
+
+# EXAMPLES
+
+- `lsfs -cqt | column -ts$'\t'` - show in a pretty table
+
