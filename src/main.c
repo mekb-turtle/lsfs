@@ -110,10 +110,10 @@ int main(int argc, char *argv[]) {
 				       "-t --tab: split info by tab characters\n"
 				       "filesystems can either be the mount directory (e.g /), or the disk file (e.g /dev/sda1)\n"
 				       "omit filesystems to list all filesystems\n",
-				       TARGET);
+				       PROJECT_NAME);
 				return 0;
 			case 'V':
-				printf("%s %s\n", TARGET, VERSION);
+				printf("%s %s\n", PROJECT_NAME, PROJECT_VERSION);
 				return 0;
 			default:
 				if (!invalid) {
